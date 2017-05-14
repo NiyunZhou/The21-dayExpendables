@@ -1,2 +1,2 @@
 # The21-dayExpendables
-We are the 21-day expandables of a kaggle competition.
+We are the 21-day expendables of a kaggle competition.
