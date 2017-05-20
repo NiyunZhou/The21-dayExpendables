@@ -195,10 +195,16 @@ class DbofModel(models.BaseModel):
         **unused_params)
 
 class LstmModel(models.BaseModel):
+  def chop_frames(self, model_input, end_frame):
+      model_input = tf.slice(model_input,[0,0,0], [-1,end_frame,-1])
+      return model_input
 
   def create_model(self, model_input, vocab_size, num_frames, **unused_params):
     """Creates a model which uses a stack of LSTMs to represent the video.
-
+    shape(model_input) = [batch_size 300 1024]
+    shape(num_frames) = [batch_size]  eg: num_frames[176 215 183 148 122 140 300 153 183 185 176 300 178 183 300 148 300 268 215 145 222 172 230 300 166 150 268 122 161 122 122 122]
+    vocab_size == 4716
+    
     Args:
       model_input: A 'batch_size' x 'max_frames' x 'num_features' matrix of
                    input features.
@@ -211,8 +217,9 @@ class LstmModel(models.BaseModel):
       model in the 'predictions' key. The dimensions of the tensor are
       'batch_size' x 'num_classes'.
     """
-    lstm_size = FLAGS.lstm_cells
-    number_of_layers = FLAGS.lstm_layers
+
+    lstm_size = FLAGS.lstm_cells  # 1024
+    number_of_layers = FLAGS.lstm_layers  # 2
 
     stacked_lstm = tf.contrib.rnn.MultiRNNCell(
             [
@@ -222,6 +229,10 @@ class LstmModel(models.BaseModel):
                 ])
 
     loss = 0.0
+
+    model_input = self.chop_frames(model_input, 30)
+
+    model_input = tf.Print(model_input, [tf.shape(model_input)], "model input")
 
     outputs, state = tf.nn.dynamic_rnn(stacked_lstm, model_input,
                                        sequence_length=num_frames,
