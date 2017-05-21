@@ -24,6 +24,8 @@ import model_utils as utils
 import tensorflow.contrib.slim as slim
 from tensorflow import flags
 
+import tensorflow.contrib.layers as tl  # BN
+
 FLAGS = flags.FLAGS
 flags.DEFINE_integer("iterations", 30,
                      "Number of frames per batch for DBoF.")
@@ -40,12 +42,110 @@ flags.DEFINE_integer("dbof_hidden_size", 1024,
 flags.DEFINE_string("dbof_pooling_method", "max",
                     "The pooling method used in the DBoF cluster layer. "
                     "Choices are 'average' and 'max'.")
-flags.DEFINE_string("video_level_classifier_model", "MoeModel",
+flags.DEFINE_string("video_level_classifier_model", "LogisticModel",
                     "Some Frame-Level models can be decomposed into a "
                     "generalized pooling operation followed by a "
                     "classifier layer")
 flags.DEFINE_integer("lstm_cells", 1024, "Number of LSTM cells.")
 flags.DEFINE_integer("lstm_layers", 2, "Number of LSTM layers.")
+
+# parameter by Zhouny
+flags.DEFINE_integer("segments_num", 3, "Number of segments before feed into model")
+flags.DEFINE_integer("max_frames", 300, "Max frames used for processing")
+flags.DEFINE_string("temporal_pooling", "avg_pooling", "Pooling strategy for temporal pooling")
+flags.DEFINE_integer("pooling_k_size", 5, "Kernel size of pooling")
+flags.DEFINE_integer("pooling_stride", 5, "Stride of pooling")
+flags.DEFINE_float("drop_prob", 0.5, "Drop out probability before FC")
+
+
+class LstmModel(models.BaseModel):
+    def chop_frames(self, model_input, start_frame, length):
+        model_input = tf.slice(model_input, [0, 0, start_frame, 0], [-1,-1, length, -1])
+        return model_input
+
+    def create_model(self, model_input, vocab_size, num_frames, **unused_params):
+        #TODO: the value of max_frames - num_frames ?
+        """Creates a model which uses a stack of LSTMs to represent the video.
+        shape(model_input) = [batch_size 300 1024]  
+        shape(num_frames) = [batch_size]  eg: num_frames[176 215 183 148 122 140 300 153 183 185 176 300 178 183 300 148 300 268 215 145 222 172 230 300 166 150 268 122 161 122 122 122]
+        vocab_size == 4716
+    
+        Args:
+          model_input: A 'batch_size' x 'max_frames' x 'num_features' matrix of
+                       input features.
+          vocab_size: The number of classes in the dataset.
+          num_frames: A vector of length 'batch' which indicates the number of
+               frames for each video (before padding).
+    
+        Returns:
+          A dictionary with a tensor containing the probability predictions of the
+          model in the 'predictions' key. The dimensions of the tensor are
+          'batch_size' x 'num_classes'.
+        """
+        # calculate how many frames in each segments
+        frames_each_seg = FLAGS.max_frames / FLAGS.segments_num
+        is_training = True
+        segments = []
+
+        # reshape like a 2D image
+        model_input = tf.expand_dims(model_input, 1) # [batch_size 1 300 1024]
+
+        # build the model (according to 2017 TS-LSTM and Temporal-Inception: Exploiting Spatiotemporal Dynamics for Activity Recognition )
+        # separate tensor
+        for s in xrange(FLAGS.segments_num):
+            segments.append(self.chop_frames(model_input, s * frames_each_seg, frames_each_seg ))
+
+        # BN + pooling
+        for s in xrange(FLAGS.segments_num):
+            segments[s] = tl.batch_norm(segments[s], is_training=is_training)
+            segments[s] = tf.nn.avg_pool(segments[s], [1, 1, FLAGS.pooling_k_size, 1], [1, 1, FLAGS.pooling_stride, 1], padding="VALID")
+
+        # Concatinate
+        concat_seg = tf.concat([segments[s] for s in xrange(FLAGS.segments_num)], axis=2)
+
+        # build LSTM model
+        lstm_size = FLAGS.lstm_cells  # 1024
+        number_of_layers = FLAGS.lstm_layers  # 2
+
+        stacked_lstm = tf.contrib.rnn.MultiRNNCell(
+            [
+                tf.contrib.rnn.BasicLSTMCell(
+                    lstm_size, forget_bias=1.0)
+                for _ in range(number_of_layers)
+            ])
+
+        loss = 0.0
+
+        # reshape tensor to 3 dim
+        shape = concat_seg.shape
+        concat_seg = tf.reshape(concat_seg, [-1, shape[2].value, shape[3].value])
+
+
+        # calculate sequence length
+        num_frames = tf.cast(num_frames, tf.float32)
+        sequence_length = tf.ceil((num_frames - FLAGS.pooling_k_size + 1.0) / FLAGS.pooling_stride) # size after pooling
+        sequence_length = tf.cast(sequence_length, tf.int32)
+
+        # feed into LSTM
+        outputs, state = tf.nn.dynamic_rnn(stacked_lstm, concat_seg,
+                                           sequence_length=sequence_length,
+                                           dtype=tf.float32)
+
+        # BN
+        fc_input = tl.batch_norm(state[-1].h, is_training=is_training)
+
+        # dropout
+        fc_input = tf.nn.dropout(fc_input, FLAGS.drop_prob)
+
+        # set linear model
+        aggregated_model = getattr(video_level_models,
+                                   FLAGS.video_level_classifier_model)
+
+        return aggregated_model().create_model(
+            model_input=fc_input,
+            vocab_size=vocab_size,
+            **unused_params)
+
 
 class FrameLevelLogisticModel(models.BaseModel):
 
@@ -194,54 +294,4 @@ class DbofModel(models.BaseModel):
         vocab_size=vocab_size,
         **unused_params)
 
-class LstmModel(models.BaseModel):
-  def chop_frames(self, model_input, end_frame):
-      model_input = tf.slice(model_input,[0,0,0], [-1,end_frame,-1])
-      return model_input
 
-  def create_model(self, model_input, vocab_size, num_frames, **unused_params):
-    """Creates a model which uses a stack of LSTMs to represent the video.
-    shape(model_input) = [batch_size 300 1024]
-    shape(num_frames) = [batch_size]  eg: num_frames[176 215 183 148 122 140 300 153 183 185 176 300 178 183 300 148 300 268 215 145 222 172 230 300 166 150 268 122 161 122 122 122]
-    vocab_size == 4716
-    
-    Args:
-      model_input: A 'batch_size' x 'max_frames' x 'num_features' matrix of
-                   input features.
-      vocab_size: The number of classes in the dataset.
-      num_frames: A vector of length 'batch' which indicates the number of
-           frames for each video (before padding).
-
-    Returns:
-      A dictionary with a tensor containing the probability predictions of the
-      model in the 'predictions' key. The dimensions of the tensor are
-      'batch_size' x 'num_classes'.
-    """
-
-    lstm_size = FLAGS.lstm_cells  # 1024
-    number_of_layers = FLAGS.lstm_layers  # 2
-
-    stacked_lstm = tf.contrib.rnn.MultiRNNCell(
-            [
-                tf.contrib.rnn.BasicLSTMCell(
-                    lstm_size, forget_bias=1.0)
-                for _ in range(number_of_layers)
-                ])
-
-    loss = 0.0
-
-    model_input = self.chop_frames(model_input, 30)
-
-    model_input = tf.Print(model_input, [tf.shape(model_input)], "model input")
-
-    outputs, state = tf.nn.dynamic_rnn(stacked_lstm, model_input,
-                                       sequence_length=num_frames,
-                                       dtype=tf.float32)
-
-    aggregated_model = getattr(video_level_models,
-                               FLAGS.video_level_classifier_model)
-
-    return aggregated_model().create_model(
-        model_input=state[-1].h,
-        vocab_size=vocab_size,
-        **unused_params)
