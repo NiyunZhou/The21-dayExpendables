@@ -53,8 +53,8 @@ flags.DEFINE_integer("lstm_layers", 2, "Number of LSTM layers.")
 flags.DEFINE_integer("segments_num", 3, "Number of segments before feed into model")
 flags.DEFINE_integer("max_frames", 300, "Max frames used for processing")
 flags.DEFINE_string("temporal_pooling", "max_pooling", "Pooling strategy for temporal pooling")
-flags.DEFINE_integer("pooling_k_size", 5, "Kernel size of pooling")
-flags.DEFINE_integer("pooling_stride", 5, "Stride of pooling")
+flags.DEFINE_integer("pooling_k_size", 3, "Kernel size of pooling")
+flags.DEFINE_integer("pooling_stride", 3, "Stride of pooling")
 flags.DEFINE_float("drop_prob", 0.5, "Drop out probability before FC")
 
 
@@ -62,6 +62,18 @@ class LstmModel(models.BaseModel):
     def chop_frames(self, model_input, start_frame, length):
         model_input = tf.slice(model_input, [0, 0, start_frame, 0], [-1,-1, length, -1])
         return model_input
+
+    def add_weighted_lstm_output(self, lstm_output):
+        N = lstm_output.shape[1].value
+        weight = 1.0 / N
+        sum = tf.multiply(tf.slice(lstm_output, [0, 0, 0], [-1, 1, -1]) , tf.constant(weight))
+        for n in xrange(1,N):
+            weight = (n + 1.0) / N
+            sum = tf.add(sum, tf.multiply(tf.slice(lstm_output, [0, n, 0], [-1, 1, -1]) , tf.constant(weight)))
+
+        return sum
+
+
 
     def create_model(self, model_input, vocab_size, num_frames, **unused_params):
         #TODO: the value of max_frames - num_frames ?
@@ -82,6 +94,7 @@ class LstmModel(models.BaseModel):
           model in the 'predictions' key. The dimensions of the tensor are
           'batch_size' x 'num_classes'.
         """
+
         # calculate how many frames in each segments
         frames_each_seg = FLAGS.max_frames / FLAGS.segments_num
         is_training = True
@@ -119,7 +132,6 @@ class LstmModel(models.BaseModel):
         # reshape tensor to 3 dim
         shape = concat_seg.shape
         concat_seg = tf.reshape(concat_seg, [-1, shape[2].value, shape[3].value])
-
 
         # calculate sequence length
         num_frames = tf.cast(num_frames, tf.float32)
