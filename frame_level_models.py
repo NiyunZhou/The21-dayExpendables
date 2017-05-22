@@ -52,7 +52,7 @@ flags.DEFINE_integer("lstm_layers", 2, "Number of LSTM layers.")
 # parameter by Zhouny
 flags.DEFINE_integer("segments_num", 3, "Number of segments before feed into model")
 flags.DEFINE_integer("max_frames", 300, "Max frames used for processing")
-flags.DEFINE_string("temporal_pooling", "avg_pooling", "Pooling strategy for temporal pooling")
+flags.DEFINE_string("temporal_pooling", "max_pooling", "Pooling strategy for temporal pooling")
 flags.DEFINE_integer("pooling_k_size", 5, "Kernel size of pooling")
 flags.DEFINE_integer("pooling_stride", 5, "Stride of pooling")
 flags.DEFINE_float("drop_prob", 0.5, "Drop out probability before FC")
@@ -97,8 +97,8 @@ class LstmModel(models.BaseModel):
 
         # BN + pooling
         for s in xrange(FLAGS.segments_num):
-            segments[s] = tl.batch_norm(segments[s], is_training=is_training)
-            segments[s] = tf.nn.avg_pool(segments[s], [1, 1, FLAGS.pooling_k_size, 1], [1, 1, FLAGS.pooling_stride, 1], padding="VALID")
+            segments[s] = tl.batch_norm(segments[s],center=True, scale=True, is_training=is_training)
+            segments[s] = tf.nn.max_pool(segments[s], [1, 1, FLAGS.pooling_k_size, 1], [1, 1, FLAGS.pooling_stride, 1], padding="VALID")
 
         # Concatinate
         concat_seg = tf.concat([segments[s] for s in xrange(FLAGS.segments_num)], axis=2)
@@ -132,7 +132,7 @@ class LstmModel(models.BaseModel):
                                            dtype=tf.float32)
 
         # BN
-        fc_input = tl.batch_norm(state[-1].h, is_training=is_training)
+        fc_input = tl.batch_norm(state[-1].h,center=True, scale=True, is_training=is_training)
 
         # dropout
         fc_input = tf.nn.dropout(fc_input, FLAGS.drop_prob)

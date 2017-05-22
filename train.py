@@ -73,7 +73,7 @@ if __name__ == "__main__":
       "regularization_penalty", 1.0,
       "How much weight to give to the regularization loss (the label loss has "
       "a weight of 1).")
-  flags.DEFINE_float("base_learning_rate", 0.01,
+  flags.DEFINE_float("base_learning_rate", 0.00005,
                      "Which learning rate to start with.")
   flags.DEFINE_float("learning_rate_decay", 0.95,
                      "Learning rate decay factor to be applied every "
@@ -81,7 +81,7 @@ if __name__ == "__main__":
   flags.DEFINE_float("learning_rate_decay_examples", 4000000,
                      "Multiply current learning rate by learning_rate_decay "
                      "every learning_rate_decay_examples.")
-  flags.DEFINE_integer("num_epochs", 5,
+  flags.DEFINE_integer("num_epochs", 2,
                        "How many passes to make over the dataset before "
                        "halting training.")
   flags.DEFINE_integer("max_steps", None,
