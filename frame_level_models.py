@@ -75,7 +75,7 @@ class LstmModel(models.BaseModel):
 
 
 
-    def create_model(self, model_input, vocab_size, num_frames, **unused_params):
+    def create_model(self, model_input, vocab_size, num_frames, is_training, **unused_params):
         #TODO: the value of max_frames - num_frames ?
         """Creates a model which uses a stack of LSTMs to represent the video.
         shape(model_input) = [batch_size 300 1024]  
@@ -97,7 +97,6 @@ class LstmModel(models.BaseModel):
 
         # calculate how many frames in each segments
         frames_each_seg = FLAGS.max_frames / FLAGS.segments_num
-        is_training = True
         segments = []
 
         # reshape like a 2D image
