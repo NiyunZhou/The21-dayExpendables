@@ -96,6 +96,7 @@ class LstmModel(models.BaseModel):
         """
 
         # calculate how many frames in each segments
+        #model_input  = tf.Print(model_input, [is_training], "### is_training")
         start_frame = 60
         frames_each_seg = (FLAGS.max_frames - start_frame) / FLAGS.segments_num
         segments = []

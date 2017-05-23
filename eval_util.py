@@ -21,6 +21,12 @@ from tensorflow.python.platform import gfile
 import mean_average_precision_calculator as map_calculator
 import average_precision_calculator as ap_calculator
 
+def analysis(video_id, predictions_val, labels_val):
+
+  return
+
+
+
 def flatten(l):
   """ Merges a list of lists into a single list. """
   return [item for sublist in l for item in sublist]
@@ -155,6 +161,16 @@ class EvaluationMetrics(object):
     self.global_ap_calculator = ap_calculator.AveragePrecisionCalculator()
     self.top_k = top_k
     self.num_examples = 0
+    self.output_data={}
+    self.confi_class = [[] for x in xrange(num_class)]
+    self.label_class = [[] for x in xrange(num_class)]
+    self.num_positives_class = [0 for x in xrange(num_class)]
+
+  def acc_sparse_data(self, sparse_class_data, sparse_input):
+    for x in xrange(len(sparse_class_data)):
+        sparse_class_data[x].extend(sparse_input[x])
+    return sparse_class_data
+
 
   def accumulate(self, predictions, labels, loss):
     """Accumulate the metrics calculated locally for this mini-batch.
@@ -180,6 +196,12 @@ class EvaluationMetrics(object):
 
     # Take the top 20 predictions.
     sparse_predictions, sparse_labels, num_positives = top_k_by_class(predictions, labels, self.top_k)
+    self.confi_class = self.acc_sparse_data(self.confi_class, sparse_predictions)
+    self.label_class = self.acc_sparse_data(self.label_class, sparse_labels)
+    for x in xrange(len(num_positives)):
+      self.num_positives_class[x] += num_positives[x]
+
+
     self.map_calculator.accumulate(sparse_predictions, sparse_labels, num_positives)
     self.global_ap_calculator.accumulate(flatten(sparse_predictions), flatten(sparse_labels), sum(num_positives))
 
@@ -208,7 +230,7 @@ class EvaluationMetrics(object):
     avg_loss = self.sum_loss / self.num_examples
 
     aps = self.map_calculator.peek_map_at_n()
-    gap = self.global_ap_calculator.peek_ap_at_n()
+    gap,self.output_data = self.global_ap_calculator.peek_ap_at_n_out()
 
     epoch_info_dict = {}
     return {"avg_hit_at_one": avg_hit_at_one, "avg_perr": avg_perr,

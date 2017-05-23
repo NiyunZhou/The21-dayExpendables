@@ -81,12 +81,12 @@ if __name__ == "__main__":
   flags.DEFINE_float("learning_rate_decay_examples", 4000000,
                      "Multiply current learning rate by learning_rate_decay "
                      "every learning_rate_decay_examples.")
-  flags.DEFINE_integer("num_epochs", 2,
+  flags.DEFINE_integer("num_epochs", 18,
                        "How many passes to make over the dataset before "
                        "halting training.")
   flags.DEFINE_integer("max_steps", None,
                        "The maximum number of iterations of the training loop.")
-  flags.DEFINE_integer("export_model_steps", 1000,
+  flags.DEFINE_integer("export_model_steps", 10,
                        "The period, in number of steps, with which the model "
                        "is exported for batch prediction.")
 

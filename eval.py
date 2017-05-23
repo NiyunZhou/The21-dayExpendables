@@ -26,6 +26,7 @@ from tensorflow import flags
 from tensorflow import gfile
 from tensorflow import logging
 import utils
+import cPickle
 
 FLAGS = flags.FLAGS
 
@@ -43,6 +44,7 @@ if __name__ == "__main__":
   flags.DEFINE_string("feature_names", "mean_rgb", "Name of the feature "
                       "to use for training.")
   flags.DEFINE_string("feature_sizes", "1024", "Length of the feature vectors.")
+  flags.DEFINE_string("output_dir", "gs://yt8m_train/","output dir of validation data")
 
   # Model flags.
   flags.DEFINE_bool(
@@ -133,6 +135,7 @@ def build_graph(reader,
   """
 
   global_step = tf.Variable(0, trainable=False, name="global_step")
+  is_training = tf.Variable(False, trainable=False)
   video_id_batch, model_input_raw, labels_batch, num_frames = get_input_evaluation_tensors(  # pylint: disable=g-line-too-long
       reader,
       eval_data_pattern,
@@ -165,6 +168,7 @@ def build_graph(reader,
   tf.add_to_collection("video_id_batch", video_id_batch)
   tf.add_to_collection("num_frames", num_frames)
   tf.add_to_collection("labels", tf.cast(labels_batch, tf.float32))
+  tf.add_to_collection("is_training", is_training)
   tf.add_to_collection("summary_op", tf.summary.merge_all())
 
 
@@ -209,6 +213,7 @@ def evaluation_loop(video_id_batch, prediction_batch, label_batch, loss,
 
     sess.run([tf.local_variables_initializer()])
 
+
     # Start the queue runners.
     fetches = [video_id_batch, prediction_batch, label_batch, loss, summary_op]
     coord = tf.train.Coordinator()
@@ -226,7 +231,7 @@ def evaluation_loop(video_id_batch, prediction_batch, label_batch, loss,
       examples_processed = 0
       while not coord.should_stop():
         batch_start_time = time.time()
-        _, predictions_val, labels_val, loss_val, summary_val = sess.run(
+        video_id, predictions_val, labels_val, loss_val, summary_val = sess.run(
             fetches)
         seconds_per_batch = time.time() - batch_start_time
         example_per_second = labels_val.shape[0] / seconds_per_batch
@@ -259,7 +264,36 @@ def evaluation_loop(video_id_batch, prediction_batch, label_batch, loss,
           epoch_info_dict,
           summary_scope="Eval")
       logging.info(epochinfo)
+
+      print "writting AP_Confi_i"  #data_output["confidence"], data_output["ap"], data_output["weight_i"]
+      with open(FLAGS.output_dir+"AP_Confi_i.cPickle", "wb") as f:
+        cPickle.dump(evl_metrics.output_data, f)
+      print "written AP_confi_i"
+
+      print "writting sparse confidence, sparse label, num positive"
+      with open(FLAGS.output_dir+"confi_class.cPickle", "wb") as f:  #[[],...,num of class,...,[]]
+          cPickle.dump(evl_metrics.confi_class, f)
+      with open(FLAGS.output_dir+"label_class.cPickle", "wb") as f:  #[[],...,num of class,...,[]]
+          cPickle.dump(evl_metrics.label_class, f)
+      with open(FLAGS.output_dir + "num_positive.cPickle", "wb") as f:  # [num of class]
+          cPickle.dump(evl_metrics.num_positives_class, f)
+
+
       evl_metrics.clear()
+
+
+
+      """
+      logging.info("writing prediction video_id label")
+      with open(FLAGS.output_dir+"video_id_all.cPickle", "wb") as f:
+        cPickle.dump(video_id_all, f)
+      with open(FLAGS.output_dir+"predictions_val_all.cPickle", "wb") as f:
+        cPickle.dump(predictions_val_all, f)
+      with open(FLAGS.output_dir + "labels_val_all.cPickle", "wb") as f:
+        cPickle.dump(labels_val_all, f)
+      logging.info("written prediction video_id label")
+      """
+
     except Exception as e:  # pylint: disable=broad-except
       logging.info("Unexpected exception: " + str(e))
       coord.request_stop(e)
@@ -304,6 +338,7 @@ def evaluate():
     prediction_batch = tf.get_collection("predictions")[0]
     label_batch = tf.get_collection("labels")[0]
     loss = tf.get_collection("loss")[0]
+    is_training_tensor = tf.get_collection("is_training")[0]
     summary_op = tf.get_collection("summary_op")[0]
 
     saver = tf.train.Saver(tf.global_variables())
