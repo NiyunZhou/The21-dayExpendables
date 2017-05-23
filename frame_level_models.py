@@ -52,9 +52,9 @@ flags.DEFINE_integer("lstm_layers", 2, "Number of LSTM layers.")
 # parameter by Zhouny
 flags.DEFINE_integer("segments_num", 3, "Number of segments before feed into model")
 flags.DEFINE_integer("max_frames", 300, "Max frames used for processing")
-flags.DEFINE_string("temporal_pooling", "max_pooling", "Pooling strategy for temporal pooling")
-flags.DEFINE_integer("pooling_k_size", 3, "Kernel size of pooling")
-flags.DEFINE_integer("pooling_stride", 3, "Stride of pooling")
+flags.DEFINE_string("temporal_pooling", "avg_pooling", "Pooling strategy for temporal pooling")
+flags.DEFINE_integer("pooling_k_size", 5, "Kernel size of pooling")
+flags.DEFINE_integer("pooling_stride", 5, "Stride of pooling")
 flags.DEFINE_float("drop_prob", 0.5, "Drop out probability before FC")
 
 
@@ -96,7 +96,8 @@ class LstmModel(models.BaseModel):
         """
 
         # calculate how many frames in each segments
-        frames_each_seg = FLAGS.max_frames / FLAGS.segments_num
+        start_frame = 60
+        frames_each_seg = (FLAGS.max_frames - start_frame) / FLAGS.segments_num
         segments = []
 
         # reshape like a 2D image
@@ -105,12 +106,12 @@ class LstmModel(models.BaseModel):
         # build the model (according to 2017 TS-LSTM and Temporal-Inception: Exploiting Spatiotemporal Dynamics for Activity Recognition )
         # separate tensor
         for s in xrange(FLAGS.segments_num):
-            segments.append(self.chop_frames(model_input, s * frames_each_seg, frames_each_seg ))
+            segments.append(self.chop_frames(model_input, s * frames_each_seg+start_frame, frames_each_seg ))
 
         # BN + pooling
         for s in xrange(FLAGS.segments_num):
             segments[s] = tl.batch_norm(segments[s],center=True, scale=True, is_training=is_training)
-            segments[s] = tf.nn.max_pool(segments[s], [1, 1, FLAGS.pooling_k_size, 1], [1, 1, FLAGS.pooling_stride, 1], padding="VALID")
+            segments[s] = tf.nn.avg_pool(segments[s], [1, 1, FLAGS.pooling_k_size, 1], [1, 1, FLAGS.pooling_stride, 1], padding="VALID")
 
         # Concatinate
         concat_seg = tf.concat([segments[s] for s in xrange(FLAGS.segments_num)], axis=2)
@@ -134,7 +135,7 @@ class LstmModel(models.BaseModel):
 
         # calculate sequence length
         num_frames = tf.cast(num_frames, tf.float32)
-        sequence_length = tf.ceil((num_frames - FLAGS.pooling_k_size + 1.0) / FLAGS.pooling_stride) # size after pooling
+        sequence_length = tf.ceil((num_frames - start_frame - FLAGS.pooling_k_size + 1.0) / FLAGS.pooling_stride) # size after pooling
         sequence_length = tf.cast(sequence_length, tf.int32)
 
         # feed into LSTM
