@@ -264,16 +264,16 @@ def evaluation_loop(video_id_batch, prediction_batch, label_batch, loss,
       logging.info(epochinfo)
 
       print "writting AP_Confi_i"  #data_output["confidence"], data_output["ap"], data_output["weight_i"]
-      with open(FLAGS.output_dir+"AP_Confi_i.cPickle", "wb") as f:
+      with gfile.Open(FLAGS.output_dir+"AP_Confi_i.cPickle", "w+") as f:
         cPickle.dump(evl_metrics.output_data, f)
       print "written AP_confi_i"
 
       print "writting sparse confidence, sparse label, num positive"
-      with open(FLAGS.output_dir+"confi_class.cPickle", "wb") as f:  #[[],...,num of class,...,[]]
+      with gfile.Open(FLAGS.output_dir+"confi_class.cPickle", "w+") as f:  #[[],...,num of class,...,[]]
           cPickle.dump(evl_metrics.confi_class, f)
-      with open(FLAGS.output_dir+"label_class.cPickle", "wb") as f:  #[[],...,num of class,...,[]]
+      with gfile.Open(FLAGS.output_dir+"label_class.cPickle", "w+") as f:  #[[],...,num of class,...,[]]
           cPickle.dump(evl_metrics.label_class, f)
-      with open(FLAGS.output_dir + "num_positive.cPickle", "wb") as f:  # [num of class]
+      with gfile.Open(FLAGS.output_dir + "num_positive.cPickle", "w+") as f:  # [num of class]
           cPickle.dump(evl_metrics.num_positives_class, f)
 
 
