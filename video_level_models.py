@@ -26,24 +26,40 @@ FLAGS = flags.FLAGS
 flags.DEFINE_integer(
     "moe_num_mixtures", 2,
     "The number of mixtures (excluding the dummy 'expert') used for MoeModel.")
+flags.DEFINE_float("drop_prob", 0.5, "Drop out probability before FC")
 
 class LogisticModel(models.BaseModel):
   """Logistic model with L2 regularization."""
 
-  def create_model(self, model_input, vocab_size, l2_penalty=1e-8, **unused_params):
+  def create_model(self, model_input, vocab_size, is_training, l2_penalty=1e-8, **unused_params):
     """Creates a logistic model.
 
     Args:
-      model_input: 'batch' x 'num_features' matrix of input features.
+      model_input: 'batch' x 'num_features' matrix of input features. 1024 + 168 = 1192
       vocab_size: The number of classes in the dataset.
 
     Returns:
       A dictionary with a tensor containing the probability predictions of the
       model in the 'predictions' key. The dimensions of the tensor are
       batch_size x num_classes."""
-    output = slim.fully_connected(
-        model_input, vocab_size, activation_fn=tf.nn.sigmoid,
-        weights_regularizer=slim.l2_regularizer(l2_penalty))
+    net = slim.slim.batch_norm(
+          model_input,
+          center=True,
+          scale=True,
+          is_training=is_training)
+    net_input = slim.dropout(net, FLAGS.drop_prob)
+    fc1_out = slim.fully_connected(net_input, 9536, activation_fn=tf.nn.sigmoid, weights_regularizer=slim.l2_regularizer(l2_penalty))
+    fc2_out = slim.fully_connected(fc1_out, 1192, activation_fn=tf.nn.sigmoid, weights_regularizer=slim.l2_regularizer(l2_penalty))
+    net_input_fc2_out = tf.add(net_input, fc2_out)
+    output = slim.slim.batch_norm(
+             net_input_fc2_out,
+             center=True,
+             scale=True,
+             is_training=is_training)
+    output = slim.dropout(output, FLAGS.drop_prob)
+    output = slim.fully_connected(output, vocab_size, activation_fn=tf.nn.sigmoid,
+                                   weights_regularizer=slim.l2_regularizer(l2_penalty))
+
     return {"predictions": output}
 
 class MoeModel(models.BaseModel):
