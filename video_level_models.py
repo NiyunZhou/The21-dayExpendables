@@ -35,7 +35,7 @@ class LogisticModel(models.BaseModel):
     """Creates a logistic model.
 
     Args:
-      model_input: 'batch' x 'num_features' matrix of input features. 1024 + 168 = 1192
+      model_input: 'batch' x 'num_features' matrix of input features. 1024 + 128 = 1152
       vocab_size: The number of classes in the dataset.
 
     Returns:
@@ -48,8 +48,8 @@ class LogisticModel(models.BaseModel):
           scale=True,
           is_training=is_training)
     net_input = slim.dropout(net, FLAGS.drop_prob)
-    fc1_out = slim.fully_connected(net_input, 9536, activation_fn=tf.nn.sigmoid, weights_regularizer=slim.l2_regularizer(l2_penalty))
-    fc2_out = slim.fully_connected(fc1_out, 1192, activation_fn=tf.nn.sigmoid, weights_regularizer=slim.l2_regularizer(l2_penalty))
+    fc1_out = slim.fully_connected(net_input, 9216, activation_fn=tf.nn.sigmoid, weights_regularizer=slim.l2_regularizer(l2_penalty))
+    fc2_out = slim.fully_connected(fc1_out, 1152, activation_fn=tf.nn.sigmoid, weights_regularizer=slim.l2_regularizer(l2_penalty))
     net_input_fc2_out = tf.add(net_input, fc2_out)
     output = slim.batch_norm(
              net_input_fc2_out,
