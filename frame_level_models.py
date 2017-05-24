@@ -55,7 +55,7 @@ flags.DEFINE_integer("max_frames", 300, "Max frames used for processing")
 flags.DEFINE_string("temporal_pooling", "avg_pooling", "Pooling strategy for temporal pooling")
 flags.DEFINE_integer("pooling_k_size", 5, "Kernel size of pooling")
 flags.DEFINE_integer("pooling_stride", 5, "Stride of pooling")
-flags.DEFINE_float("drop_prob", 0.5, "Drop out probability before FC")
+# flags.DEFINE_float("drop_prob", 0.5, "Drop out probability before FC")
 
 
 class LstmModel(models.BaseModel):

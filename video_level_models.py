@@ -42,7 +42,7 @@ class LogisticModel(models.BaseModel):
       A dictionary with a tensor containing the probability predictions of the
       model in the 'predictions' key. The dimensions of the tensor are
       batch_size x num_classes."""
-    net = slim.slim.batch_norm(
+    net = slim.batch_norm(
           model_input,
           center=True,
           scale=True,
@@ -51,7 +51,7 @@ class LogisticModel(models.BaseModel):
     fc1_out = slim.fully_connected(net_input, 9536, activation_fn=tf.nn.sigmoid, weights_regularizer=slim.l2_regularizer(l2_penalty))
     fc2_out = slim.fully_connected(fc1_out, 1192, activation_fn=tf.nn.sigmoid, weights_regularizer=slim.l2_regularizer(l2_penalty))
     net_input_fc2_out = tf.add(net_input, fc2_out)
-    output = slim.slim.batch_norm(
+    output = slim.batch_norm(
              net_input_fc2_out,
              center=True,
              scale=True,
