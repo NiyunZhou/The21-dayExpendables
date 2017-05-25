@@ -79,7 +79,7 @@ class Frame2VideoModel(models.BaseModel):
 
     def average_all_frames(self, input):
         output = tf.reduce_mean(input, axis=1)
-        output = tf.reshape(output,[output.shape[0].value, output.shape[-1].value])
+        output = tf.reshape(output,[-1, 1152])
         return output
 
     def create_model(self, model_input, vocab_size, num_frames, is_training, **unused_params):
