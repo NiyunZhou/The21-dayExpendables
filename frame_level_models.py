@@ -59,7 +59,7 @@ flags.DEFINE_integer("pooling_stride", 5, "Stride of pooling")
 
 
 class Frame2VideoModel(models.BaseModel):
-    def wans_model_block(self, model_input, name, l2_penalty=1e-8, **unused_params):
+    def wans_model_block(self, model_input,is_training, name, l2_penalty=1e-8, **unused_params):
         with tf.variable_scope(name):
             model_input = slim.dropout(model_input, FLAGS.drop_prob)
             layer_1 = slim.fully_connected(
@@ -88,14 +88,14 @@ class Frame2VideoModel(models.BaseModel):
 
         net = slim.batch_norm(model_input,center=True,scale=True, is_training=is_training)
         all_input = self.average_all_frames(net)
-        all_output = self.wans_model_block(all_input,"all_frame")
+        all_output = self.wans_model_block(all_input,is_training,"all_frame")
 
         segments = []
         for s in xrange(FLAGS.segments_num):
             segments.append(self.chop_average_frames(net, s * frames_each_seg, frames_each_seg))
 
         for s in xrange(FLAGS.segments_num):
-            segments[s] = self.wans_model_block(segments[s],"segment"+str(s))
+            segments[s] = self.wans_model_block(segments[s],is_training,"segment"+str(s))
 
         segments_sum = segments[0]
         for s in xrange(1,FLAGS.segments_num):
