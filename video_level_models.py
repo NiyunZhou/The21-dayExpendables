@@ -42,22 +42,17 @@ class LogisticModel(models.BaseModel):
       A dictionary with a tensor containing the probability predictions of the
       model in the 'predictions' key. The dimensions of the tensor are
       batch_size x num_classes."""
-    net = slim.batch_norm(
-          model_input,
-          center=True,
-          scale=True,
-          is_training=is_training)
-    net_input = slim.dropout(net, FLAGS.drop_prob)
-    fc1_out = slim.fully_connected(net_input, 9216, activation_fn=tf.nn.sigmoid, weights_regularizer=slim.l2_regularizer(l2_penalty))
-    fc2_out = slim.fully_connected(fc1_out, 1152, activation_fn=tf.nn.sigmoid, weights_regularizer=slim.l2_regularizer(l2_penalty))
-    net_input_fc2_out = tf.add(net_input, fc2_out)
-    output = slim.batch_norm(
-             net_input_fc2_out,
+    fc1_out = slim.fully_connected(model_input, 9216)
+    fc2_out = slim.fully_connected(fc1_out, 4608)
+    fc3_out = slim.fully_connected(fc2_out, 1152)
+    net_input_fc3_out = tf.add(model_input, fc3_out)
+    fc4_in = slim.batch_norm(
+             net_input_fc3_out,
              center=True,
              scale=True,
              is_training=is_training)
-    output = slim.dropout(output, FLAGS.drop_prob)
-    output = slim.fully_connected(output, vocab_size, activation_fn=tf.nn.sigmoid,
+    fc4_out = slim.fully_connected(fc4_in, 9216)
+    output = slim.fully_connected(fc4_out, vocab_size, activation_fn=tf.nn.sigmoid,
                                    weights_regularizer=slim.l2_regularizer(l2_penalty))
 
     return {"predictions": output}
@@ -117,3 +112,17 @@ class MoeModel(models.BaseModel):
     final_probabilities = tf.reshape(final_probabilities_by_class_and_batch,
                                      [-1, vocab_size])
     return {"predictions": final_probabilities}
+
+
+class SkipModel(models.BaseModel):
+  def create_model(self, model_input, vocab_size, l2_penalty=1e-8, **unused_params):
+    layer_1 = slim.fully_connected(
+        model_input, 1152, scope='fc/fc_1')
+    layer_2 = slim.fully_connected(
+        model_input + layer_1, 1152, scope='fc/fc_2')
+    layer_3 = slim.fully_connected(
+        layer_2, 1152, scope='fc/fc_3')
+    output = slim.fully_connected(
+        model_input + layer_2 + layer_3, vocab_size, activation_fn=tf.nn.sigmoid,
+        weights_regularizer=slim.l2_regularizer(l2_penalty), scope='fc/fc_4')
+    return {"predictions": output}
