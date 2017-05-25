@@ -58,6 +58,57 @@ flags.DEFINE_integer("pooling_stride", 5, "Stride of pooling")
 # flags.DEFINE_float("drop_prob", 0.5, "Drop out probability before FC")
 
 
+class Frame2VideoModel(models.BaseModel):
+    def wans_model_block(self, model_input, name, l2_penalty=1e-8, **unused_params):
+        with tf.variable_scope(name):
+            model_input = slim.dropout(model_input, FLAGS.drop_prob)
+            layer_1 = slim.fully_connected(
+                model_input, 1152)
+            layer_2 = slim.fully_connected(
+                model_input + layer_1, 1152)
+            layer_3 = slim.fully_connected(
+                layer_2, 1152)
+            output = slim.batch_norm(model_input + layer_2 + layer_3,center=True,scale=True, is_training=is_training)
+        return output
+
+    def chop_average_frames(self, model_input, start_frame, length):
+        model_input = tf.slice(model_input, [0, start_frame, 0], [-1, length, -1])
+        output = tf.reduce_mean(model_input, axis=1)
+        output = tf.reshape(output, [output.shape[0].value, output.shape[-1].value])
+        return output
+
+    def average_all_frames(self, input):
+        output = tf.reduce_mean(input, axis=1)
+        output = tf.reshape(output,[output.shape[0].value, output.shape[-1].value])
+        return output
+
+    def create_model(self, model_input, vocab_size, num_frames, is_training, **unused_params):
+        frames_each_seg = FLAGS.max_frames / FLAGS.segments_num
+
+
+        net = slim.batch_norm(model_input,center=True,scale=True, is_training=is_training)
+        all_input = self.average_all_frames(net)
+        all_output = self.wans_model_block(all_input,"all_frame")
+
+        segments = []
+        for s in xrange(FLAGS.segments_num):
+            segments.append(self.chop_average_frames(net, s * frames_each_seg, frames_each_seg))
+
+        for s in xrange(FLAGS.segments_num):
+            segments[s] = self.wans_model_block(segments[s],"segment"+str(s))
+
+        segments_sum = segments[0]
+        for s in xrange(1,FLAGS.segments_num):
+            segments_sum = segments_sum + segments[s]
+
+        segments_sum = slim.batch_norm(segments_sum, center=True,scale=True, is_training=is_training)
+
+        output = slim.fully_connected(segments_sum + all_output, vocab_size, activation_fn=tf.nn.sigmoid,
+                                      weights_regularizer=slim.l2_regularizer(l2_penalty))
+
+        return {"predictions": output}
+
+
 class LstmModel(models.BaseModel):
     def chop_frames(self, model_input, start_frame, length):
         model_input = tf.slice(model_input, [0, 0, start_frame, 0], [-1,-1, length, -1])
