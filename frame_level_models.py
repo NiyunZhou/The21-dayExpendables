@@ -83,6 +83,7 @@ class Frame2VideoModel(models.BaseModel):
         return output
 
     def create_model(self, model_input, vocab_size, num_frames, is_training, **unused_params):
+        l2_penalty = 1e-8
         frames_each_seg = FLAGS.max_frames / FLAGS.segments_num
 
 
