@@ -74,7 +74,7 @@ class Frame2VideoModel(models.BaseModel):
     def chop_average_frames(self, model_input, start_frame, length):
         model_input = tf.slice(model_input, [0, start_frame, 0], [-1, length, -1])
         output = tf.reduce_mean(model_input, axis=1)
-        output = tf.reshape(output, [output.shape[0].value, output.shape[-1].value])
+        output = tf.reshape(output, [-1 , 1152])
         return output
 
     def average_all_frames(self, input):
