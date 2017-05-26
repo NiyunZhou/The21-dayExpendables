@@ -130,3 +130,29 @@ class SkipModel(models.BaseModel):
         model_input + layer_2 + layer_3, vocab_size, activation_fn=tf.nn.sigmoid,
         weights_regularizer=slim.l2_regularizer(l2_penalty), scope='fc/fc_4')
     return {"predictions": output}
+
+class DenseModel(models.BaseModel):
+  def create_model(self, model_input, vocab_size, is_training, l2_penalty=1e-8, **unused_params):
+    layer_1 = slim.fully_connected(
+        model_input, 1152, scope='fc1/fc_1')
+    layer_2 = slim.fully_connected(
+        model_input + layer_1, 1152, scope='fc1/fc_2')
+    layer_3 = slim.fully_connected(
+        model_input + layer_1 + layer_2, 1152, scope='fc1/fc_3')
+    output_1 = slim.fully_connected(
+        model_input + layer_1 + layer_2 + layer_3, 1152, scope='fc1/fc_4')
+    BN = slim.batch_norm(
+             output_1,
+             center=True,
+             scale=True,
+             is_training=is_training)
+    layer_4 = slim.fully_connected(
+        BN, 1152, scope='fc2/fc_1')
+    layer_5 = slim.fully_connected(
+        BN + layer_4, 1152, scope='fc2/fc_2')
+    layer_6 = slim.fully_connected(
+        BN + layer_4 + layer_5, 1152, scope='fc2/fc_3')
+    output_2 = slim.fully_connected(
+        BN + layer_4 + layer_5 + layer_6, vocab_size, activation_fn=tf.nn.sigmoid,
+        weights_regularizer=slim.l2_regularizer(l2_penalty), scope='fc2/fc_4')
+    return {"predictions": output_2}
