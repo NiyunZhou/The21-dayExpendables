@@ -36,7 +36,7 @@ class LogisticModel(models.BaseModel):
 
     Args:
       model_input: 'batch' x 'num_features' matrix of input features. 1024 + 128 = 1152
-      vocab_size: The number of classes in the dataset.
+      vocab_size: The number of classes in the dataset. 
 
     Returns:
       A dictionary with a tensor containing the probability predictions of the
