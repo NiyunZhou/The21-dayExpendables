@@ -14,7 +14,7 @@ from scipy.sparse import csc_matrix
 ###########################
 # User-defined parameters #
 ###########################
-GAP = np.array([0.79421, 0.78707, 0.78686, 0.78678])
+GAP = np.array([0.79421, 0.78887, 0.78707, 0.78686, 0.78678])  # to be modified
 SCORE = np.exp(GAP / (1 - GAP))
 WEIGHT = SCORE / np.sum(SCORE)
 FILE_NUM = len(SCORE)
@@ -31,6 +31,7 @@ NUM_SLICES = ROWS / SLICE_ROWS
 TYPE_INT = np.int16
 TYPE_FLOAT = np.float16
 TYPE_STR = '|S8'
+
 ###################################
 # Pre-process and merge csv files #
 ###################################
