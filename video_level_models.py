@@ -135,19 +135,19 @@ class DenseModel(models.BaseModel):
 
   def dense_block(self, model_input,is_training):
     layer_1 = slim.fully_connected(
-          model_input, 9216, scope='fc1/fc_1')
+          model_input, 4608, scope='fc1/fc_1')
     layer_1 = slim.dropout(layer_1, 0.7, is_training=is_training)
     layer_1 = slim.batch_norm(layer_1, center=True, scale=True, is_training=is_training)
     layer_2 = slim.fully_connected(
-          layer_1, 9216, scope='fc1/fc_2')
+          layer_1, 4608, scope='fc1/fc_2')
     layer_2 = slim.dropout(layer_2, 0.6, is_training=is_training)
     layer_2 = slim.batch_norm(layer_2, center=True, scale=True, is_training=is_training)
     layer_3 = slim.fully_connected(
-          layer_1 + layer_2, 9216, scope='fc1/fc_3')
+          layer_1 + layer_2, 4608, scope='fc1/fc_3')
     layer_3 = slim.dropout(layer_3, 0.5, is_training=is_training)
     layer_3 = slim.batch_norm(layer_3, center=True, scale=True, is_training=is_training)
     output_1 = slim.fully_connected(
-          layer_1 + layer_2 + layer_3, 9216, scope='fc1/fc_4')
+          layer_1 + layer_2 + layer_3, 4608, scope='fc1/fc_4')
     output_1 = slim.dropout(output_1, 0.5, is_training=is_training)
     output_1 = slim.batch_norm(output_1, center=True, scale=True, is_training=is_training)
     return output_1
