@@ -39,7 +39,7 @@ TYPE_STR = '|S8'
 ###################################
 # Pre-process and merge csv files #
 ###################################
-print "\r\r1. Pre-processing before reading csv files...",
+print "\x1b[2K\r1. Pre-processing before reading csv files...",
 
 label_merged = np.array([0] * TOP * ROWS, dtype=TYPE_INT)
 confidence_merged = np.array([0] * TOP * ROWS, dtype=TYPE_FLOAT)
@@ -48,7 +48,7 @@ confidence_sparse = csc_matrix((ROWS, COLS), dtype=TYPE_FLOAT)
 csv_file = None
 rows = np.array([[row] * TOP for row in range(ROWS)]).flatten()
 for i in range(FILE_NUM):
-    print "\r\r2. Reading {}.csv, {} of {} files...".format(i, i + 1, FILE_NUM),
+    print "\x1b[2K\r2. Reading {}.csv, {} of {} files...".format(i, i + 1, FILE_NUM),
 
     csv_file = pd.read_csv('{}.csv'.format(i))
     arr = np.array(csv_file.values[:, 1])
@@ -62,7 +62,7 @@ for i in range(FILE_NUM):
 ####################################
 # Batch-process data in case of MemoryError. 700640 * 20 = 16 * 43790 * 20 = 16 * 875800
 for i in range(NUM_SLICES):
-    print "\r\r3. Generating new prediction data: slice {} of {}...".format(i + 1, NUM_SLICES),
+    print "\x1b[2K\r3. Generating new prediction data: slice {} of {}...".format(i + 1, NUM_SLICES),
 
     label_merged[SLICE_LEN * i:SLICE_LEN * (i + 1)] = \
         np.flip(np.argsort(confidence_sparse[SLICE_ROWS * i:SLICE_ROWS * (i + 1)].toarray(), axis=-1), -1)[:, :TOP].flatten()
@@ -74,7 +74,7 @@ confidence_merged.reshape((ROWS, TOP))
 ##########################
 # Save merged prediction #
 ##########################
-print "\r\r4. New prediction data is ready, generating csv...",
+print "\x1b[2K\r4. New prediction data is ready, generating csv...",
 
 lc_list = np.vstack((label_merged.astype(TYPE_STR), confidence_merged.astype(TYPE_STR))).T.reshape(ROWS, TOP * 2)
 video_id = list(csv_file.values[:, 0])
@@ -83,4 +83,4 @@ lc_pairs = [" ".join(lc_list[row]) for row in range(ROWS)]
 saver = pd.DataFrame({HEADERS[0]: video_id, HEADERS[1]: lc_pairs}, columns=HEADERS)
 saver.to_csv("merge.csv", index=False)
 
-print "\r\r5. Done! Check out merge result in merge.csv"
+print "\x1b[2K\r5. Done! Check out merge result in merge.csv"
