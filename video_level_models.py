@@ -135,7 +135,7 @@ class DenseModel(models.BaseModel):
 
   def dense_block(self, model_input,is_training):
     layer_1 = slim.fully_connected(
-          model_input, 9126, scope='fc1/fc_1')
+          model_input, 9216, scope='fc1/fc_1')
     layer_1 = slim.dropout(layer_1, 0.7, is_training=is_training)
     layer_1 = slim.batch_norm(layer_1, center=True, scale=True, is_training=is_training)
     layer_2 = slim.fully_connected(
