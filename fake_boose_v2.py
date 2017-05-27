@@ -28,14 +28,16 @@ SLICE_ROWS = 43790
 SLICE_LEN = SLICE_ROWS * 20
 NUM_SLICES = ROWS / SLICE_ROWS
 
+TYPE_INT = np.int16
+TYPE_FLOAT = np.float16
 ###################################
 # Pre-process and merge csv files #
 ###################################
 print "\r\r1. Pre-processing before reading csv files...",
 
-label_merged = np.array([0] * TOP * ROWS, dtype=np.int)
-confidence_merged = np.array([0] * TOP * ROWS, dtype=np.float)
-confidence_sparse = csc_matrix((ROWS, COLS), dtype=np.float)
+label_merged = np.array([0] * TOP * ROWS, dtype=TYPE_INT)
+confidence_merged = np.array([0] * TOP * ROWS, dtype=TYPE_FLOAT)
+confidence_sparse = csc_matrix((ROWS, COLS), dtype=TYPE_FLOAT)
 
 csv_file = None
 rows = np.array([[row] * TOP for row in range(ROWS)]).flatten()
@@ -45,8 +47,8 @@ for i in range(FILE_NUM):
     csv_file = pd.read_csv('{}.csv'.format(i))
     arr = np.array(csv_file.values[:, 1])
     mat = np.array([np.array(arr[row].split(" ")).reshape((TOP, 2)) for row in range(ROWS)]).reshape((ROWS * TOP, 2))
-    label = mat[:, 0].astype(np.int)
-    confidence = mat[:, 1].astype(np.float) * WEIGHT[i]
+    label = mat[:, 0].astype(TYPE_INT)
+    confidence = mat[:, 1].astype(TYPE_FLOAT) * WEIGHT[i]
     confidence_sparse += csc_matrix((confidence, (rows, label)), shape=(ROWS, COLS))
 
 ####################################
