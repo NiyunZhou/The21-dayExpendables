@@ -33,11 +33,9 @@ class LogisticModel(models.BaseModel):
 
   def create_model(self, model_input, vocab_size, is_training, l2_penalty=1e-8, **unused_params):
     """Creates a logistic model.
-
     Args:
       model_input: 'batch' x 'num_features' matrix of input features. 1024 + 128 = 1152
       vocab_size: The number of classes in the dataset.
-
     Returns:
       A dictionary with a tensor containing the probability predictions of the
       model in the 'predictions' key. The dimensions of the tensor are
@@ -67,11 +65,9 @@ class MoeModel(models.BaseModel):
                    l2_penalty=1e-8,
                    **unused_params):
     """Creates a Mixture of (Logistic) Experts model.
-
      The model consists of a per-class softmax distribution over a
      configurable number of logistic classifiers. One of the classifiers in the
      mixture is not trained, and always predicts 0.
-
     Args:
       model_input: 'batch_size' x 'num_features' matrix of input features.
       vocab_size: The number of classes in the dataset.
@@ -93,18 +89,30 @@ class MoeModel(models.BaseModel):
         biases_initializer=None,
         weights_regularizer=slim.l2_regularizer(l2_penalty),
         scope="gates")
+    
+    layer_1 = slim.fully_connected(
+        model_input, 1152, scope='fc/fc_1')
+    layer_2 = slim.fully_connected(
+        model_input + layer_1, 1152, scope='fc/fc_2')
+    layer_3 = slim.fully_connected(
+        layer_2, 1152, scope='fc/fc_3')
+    output = slim.fully_connected(
+        model_input + layer_2 + layer_3, vocab_size * num_mixtures,
+        scope='fc/fc_4')
+    '''
     expert_activations = slim.fully_connected(
         model_input,
         vocab_size * num_mixtures,
         activation_fn=None,
         weights_regularizer=slim.l2_regularizer(l2_penalty),
         scope="experts")
+    '''
 
     gating_distribution = tf.nn.softmax(tf.reshape(
         gate_activations,
         [-1, num_mixtures + 1]))  # (Batch * #Labels) x (num_mixtures + 1)
     expert_distribution = tf.nn.sigmoid(tf.reshape(
-        expert_activations,
+        output,
         [-1, num_mixtures]))  # (Batch * #Labels) x num_mixtures
 
     final_probabilities_by_class_and_batch = tf.reduce_sum(
@@ -126,3 +134,59 @@ class SkipModel(models.BaseModel):
         model_input + layer_2 + layer_3, vocab_size, activation_fn=tf.nn.sigmoid,
         weights_regularizer=slim.l2_regularizer(l2_penalty), scope='fc/fc_4')
     return {"predictions": output}
+
+class ResModel(models.BaseModel):
+  def create_model(self, model_input, vocab_size, is_training, l2_penalty=1e-8, **unused_params):
+    BN_1 = slim.batch_norm(
+             model_input,
+             center=True,
+             scale=True,
+             is_training=is_training)
+    FC_1 = slim.fully_connected(
+             BN_1,
+             1152,
+             scope='fc/fc_1')
+    FC_1_ = slim.dropout(FC_1, FLAGS.drop_prob)
+    BN_2 = slim.batch_norm(
+             FC_1,
+             center=True,
+             scale=True,
+             is_training=is_training)
+    FC_2 = slim.fully_connected(
+             BN_2,
+             1152,
+             scope='fc/fc_2')
+    FC_2_ = slim.dropout(FC_2, FLAGS.drop_prob)
+    output = slim.fully_connected(
+             model_input + FC_2_,
+             vocab_size,
+             activation_fn=tf.nn.sigmoid,
+             weights_regularizer=slim.l2_regularizer(l2_penalty)
+             )
+    return {"predictions":output}
+
+class DenseModel(models.BaseModel):
+  def create_model(self, model_input, vocab_size, is_training, l2_penalty=1e-8, **unused_params):
+    layer_1 = slim.fully_connected(
+        model_input, 1152, scope='fc/fc_1')
+    layer_2 = slim.fully_connected(
+        model_input + layer_1, 1152, scope='fc/fc_2')
+    layer_3 = slim.fully_connected(
+        model_input + layer_1 + layer_2, 1152, scope='fc/fc_3')
+    output_1 = slim.fully_connected(
+        model_input + layer_1 + layer_2 + layer_3, 1152, scope='fc/fc_4')
+    BN = slim.batch_norm(
+             output_1,
+             center=True,
+             scale=True,
+             is_training=is_training)
+    layer_4 = slim.fully_connected(
+        BN, 1152, scope='fc2/fc_1')
+    layer_5 = slim.fully_connected(
+        BN + layer_4, 1152, scope='fc2/fc_2')
+    layer_6 = slim.fully_connected(
+        BN + layer_4 + layer_5, 1152, scope='fc2/fc_3')
+    output_2 = slim.fully_connected(
+        BN + layer_4 + layer_5 + layer_6, vocab_size, activation_fn=tf.nn.sigmoid,
+        weights_regularizer=slim.l2_regularizer(l2_penalty), scope='fc2/fc_4')
+    return {"predictions": output_2}
