@@ -30,6 +30,7 @@ NUM_SLICES = ROWS / SLICE_ROWS
 
 TYPE_INT = np.int16
 TYPE_FLOAT = np.float16
+TYPE_STR = '|S8'
 ###################################
 # Pre-process and merge csv files #
 ###################################
@@ -70,7 +71,7 @@ confidence_merged.reshape((ROWS, TOP))
 ##########################
 print "\r\r4. New prediction data is ready, generating csv...",
 
-lc_list = np.vstack((label_merged.astype(np.str), confidence_merged.astype(np.str))).T.reshape(ROWS, TOP * 2)
+lc_list = np.vstack((label_merged.astype(TYPE_STR), confidence_merged.astype(TYPE_STR))).T.reshape(ROWS, TOP * 2)
 video_id = list(csv_file.values[:, 0])
 lc_pairs = [" ".join(lc_list[row]) for row in range(ROWS)]
 
