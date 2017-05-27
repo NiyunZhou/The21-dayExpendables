@@ -10,6 +10,10 @@ Output:
 import pandas as pd
 import numpy as np
 from scipy.sparse import csc_matrix
+import sys
+import os
+
+sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
 
 ###########################
 # User-defined parameters #
