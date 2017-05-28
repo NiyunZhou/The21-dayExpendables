@@ -89,6 +89,7 @@ if __name__ == "__main__":
   flags.DEFINE_integer("export_model_steps", 1000,
                        "The period, in number of steps, with which the model "
                        "is exported for batch prediction.")
+  flags.DEFINE_boolean("use_validation", False, "Whether use validation set for training")
 
 
   # Other flags.
@@ -155,7 +156,15 @@ def get_input_data_tensors(reader,
   """
   logging.info("Using batch size of " + str(batch_size) + " for training.")
   with tf.name_scope("train_input"):
-    files = gfile.Glob(data_pattern)
+    files = []
+    if FLAGS.use_validation:
+      logging.info("########The validation set will be used for  training!#########")
+      data_pattern = data_pattern.split(',')
+      for s in data_pattern:
+          files.extend(gfile.Glob(s))
+      #TODO: add split sets
+    else:
+      files = gfile.Glob(data_pattern)
     if not files:
       raise IOError("Unable to find training files. data_pattern='" +
                     data_pattern + "'.")
