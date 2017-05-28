@@ -42,20 +42,26 @@ class LogisticModel(models.BaseModel):
       A dictionary with a tensor containing the probability predictions of the
       model in the 'predictions' key. The dimensions of the tensor are
       batch_size x num_classes."""
+    model_input = slim.batch_norm(
+        model_input,
+        center=True,
+        scale=True,
+        is_training=is_training)
     fc1_out = slim.fully_connected(model_input, 9216)
-    fc1_out = slim.dropout(fc1_out, FLAGS.drop_prob,)
+    fc1_out = slim.dropout(fc1_out, FLAGS.drop_prob, is_training=is_training)
     fc2_out = slim.fully_connected(fc1_out, 4608)
-    fc2_out = slim.dropout(fc2_out, FLAGS.drop_prob)
+    fc2_out = slim.dropout(fc2_out, FLAGS.drop_prob,  is_training=is_training)
     fc3_out = slim.fully_connected(fc2_out, 1152)
-    net_input_fc3_out = tf.add(model_input, fc3_out)
-    fc4_in = slim.batch_norm(
-             net_input_fc3_out,
-             center=True,
-             scale=True,
-             is_training=is_training)
-    fc4_in = slim.dropout(fc4_in, FLAGS.drop_prob)
+    fc3_out = slim.batch_norm(
+        fc3_out,
+        center=True,
+        scale=True,
+        is_training=is_training)
+    fc4_in = tf.add(model_input, fc3_out)
+
+    fc4_in = slim.dropout(fc4_in, FLAGS.drop_prob,  is_training=is_training)
     fc4_out = slim.fully_connected(fc4_in, 9216)
-    fc4_out = slim.dropout(fc4_out, FLAGS.drop_prob)
+    fc4_out = slim.dropout(fc4_out, FLAGS.drop_prob,  is_training=is_training)
     output = slim.fully_connected(fc4_out, vocab_size, activation_fn=tf.nn.sigmoid,
                                    weights_regularizer=slim.l2_regularizer(l2_penalty))
 
