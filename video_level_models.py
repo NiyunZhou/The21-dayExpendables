@@ -123,6 +123,48 @@ class MoeModel(models.BaseModel):
                                      [-1, vocab_size])
     return {"predictions": final_probabilities}
 
+class MoeSkipModel(models.BaseModel):
+  def create_model(self,
+                   model_input,
+                   vocab_size,
+                   num_mixtures=None,
+                   l2_penalty=1e-8,
+                   **unused_params):
+    num_mixtures = num_mixtures or FLAGS.moe_num_mixtures
+
+    gate_activations = slim.fully_connected(
+        model_input,
+        vocab_size * (num_mixtures + 1),
+        activation_fn=None,
+        biases_initializer=None,
+        weights_regularizer=slim.l2_regularizer(l2_penalty),
+        scope="gates")
+
+    layer_1 = slim.fully_connected(
+        model_input, 1152, scope='fc/fc_1')
+    layer_2 = slim.fully_connected(
+        model_input + layer_1, 1152, scope='fc/fc_2')
+    layer_3 = slim.fully_connected(
+        layer_2, 1152, scope='fc/fc_3')
+    expert_activations = slim.fully_connected(
+        model_input + layer_2 + layer_3,
+        vocab_size * num_mixtures,
+        activation_fn=None,
+        weights_regularizer=slim.l2_regularizer(l2_penalty),
+        scope="experts")
+
+    gating_distribution = tf.nn.softmax(tf.reshape(
+        gate_activations,
+        [-1, num_mixtures + 1]))  # (Batch * #Labels) x (num_mixtures + 1)
+    expert_distribution = tf.nn.sigmoid(tf.reshape(
+        expert_activations,
+        [-1, num_mixtures]))  # (Batch * #Labels) x num_mixtures
+
+    final_probabilities_by_class_and_batch = tf.reduce_sum(
+        gating_distribution[:, :num_mixtures] * expert_distribution, 1)
+    final_probabilities = tf.reshape(final_probabilities_by_class_and_batch,
+                                     [-1, vocab_size])
+    return {"predictions": final_probabilities}
 
 class SkipModel(models.BaseModel):
   def create_model(self, model_input, vocab_size, l2_penalty=1e-8, **unused_params):
