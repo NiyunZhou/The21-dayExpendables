@@ -68,8 +68,6 @@ for i in range(NUM_SLICES):
         np.flip(np.argsort(confidence_sparse[SLICE_ROWS * i:SLICE_ROWS * (i + 1)].toarray(), axis=-1), -1)[:, :TOP].flatten()
     confidence_merged[SLICE_LEN * i:SLICE_LEN * (i + 1)] = \
         np.flip(np.sort(confidence_sparse[SLICE_ROWS * i:SLICE_ROWS * (i + 1)].toarray(), axis=-1), -1)[:, :TOP].flatten()
-label_merged.reshape((ROWS, TOP))
-confidence_merged.reshape((ROWS, TOP))
 
 ##########################
 # Save merged prediction #
