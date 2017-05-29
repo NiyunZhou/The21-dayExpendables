@@ -90,6 +90,7 @@ if __name__ == "__main__":
                        "The period, in number of steps, with which the model "
                        "is exported for batch prediction.")
   flags.DEFINE_boolean("use_validation", False, "Whether use validation set for training")
+  flags.DEFINE_boolean("multi_model", False, "Whether use multi model training")
 
 
   # Other flags.
@@ -102,6 +103,7 @@ if __name__ == "__main__":
       "log_device_placement", False,
       "Whether to write the device on which every op will run into the "
       "logs on startup.")
+
 
 def validate_class_name(flag_value, category, modules, expected_superclass):
   """Checks that the given string matches a class of the expected type.
@@ -277,14 +279,22 @@ def build_graph(reader,
     with tf.device(device_string % i):
       with (tf.variable_scope(("tower"), reuse=True if i > 0 else None)):
         with (slim.arg_scope([slim.model_variable, slim.variable], device="/cpu:0" if num_gpus!=1 else "/gpu:0")):
-          result = model.create_model(
-            tower_inputs[i],
-            num_frames=tower_num_frames[i],
-            vocab_size=reader.num_classes,
-            labels=tower_labels[i], is_training=is_training)
+          if FLAGS.multi_model:
+            print "###########Using multi model strategy"
+            result = model.create_model(
+                  tower_inputs[i],
+                  num_frames=tower_num_frames[i],
+                  vocab_size=reader.num_classes,
+                  labels=tower_labels[i], is_training=is_training)
+            tower_labels[i] = result["labels"]
+          else:
+            result = model.create_model(
+                tower_inputs[i],
+                num_frames=tower_num_frames[i],
+                vocab_size=reader.num_classes,
+                labels=tower_labels[i], is_training=is_training)
           for variable in slim.get_model_variables():
             tf.summary.histogram(variable.op.name, variable)
-
           predictions = result["predictions"]
           tower_predictions.append(predictions)
 

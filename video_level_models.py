@@ -18,15 +18,96 @@ import math
 import models
 import tensorflow as tf
 import utils
+from tensorflow import gfile
 
 from tensorflow import flags
 import tensorflow.contrib.slim as slim
+import cPickle
 
 FLAGS = flags.FLAGS
 flags.DEFINE_integer(
     "moe_num_mixtures", 2,
     "The number of mixtures (excluding the dummy 'expert') used for MoeModel.")
 flags.DEFINE_float("drop_prob", 0.5, "Drop out probability before FC")
+flags.DEFINE_integer("multi_model_classes", 1572, "output classes for each sub model")
+flags.DEFINE_string("class_index_file","./youtube-8m/6_1572_model.cPickle", "Shuffled class index file")
+
+
+class MultiSubModel(models.BaseModel):
+    def __init__(self):
+        self.model_num = 0
+
+    def parse_labels(self, labels, submodel_label):
+        new_labels = []
+        for each in xrange(FLAGS.batch_size):
+            new_labels.append(tf.nn.embedding_lookup(labels[each], submodel_label))
+        labels = tf.stack(new_labels)
+        return labels
+
+    def create_model(self, model_input, vocab_size, is_training, labels, l2_penalty=1e-8,  **unused_params):
+        with gfile.Open(FLAGS.class_index_file ,"rb") as f:
+            submodels = cPickle.load(f)
+        print "####Model number is ",self.model_num
+        submodel_label = submodels[self.model_num]
+        labels = self.parse_labels(labels, submodel_label)
+
+        # Model start
+        model_input = slim.batch_norm(
+            model_input,
+            center=True,
+            scale=True,
+            is_training=is_training)
+        fc1_out = slim.fully_connected(model_input, 9216)
+        fc1_out = slim.dropout(fc1_out, FLAGS.drop_prob, is_training=is_training)
+        fc2_out = slim.fully_connected(fc1_out, 4608)
+        fc2_out = slim.dropout(fc2_out, FLAGS.drop_prob, is_training=is_training)
+        fc3_out = slim.fully_connected(fc2_out, 1152)
+        fc3_out = slim.batch_norm(
+            fc3_out,
+            center=True,
+            scale=True,
+            is_training=is_training)
+        fc4_in = tf.add(model_input, fc3_out)
+
+        fc4_in = slim.dropout(fc4_in, FLAGS.drop_prob, is_training=is_training)
+        fc4_out = slim.fully_connected(fc4_in, 9216)
+        fc4_out = slim.dropout(fc4_out, FLAGS.drop_prob, is_training=is_training)
+
+        output = slim.fully_connected(fc4_out, FLAGS.multi_model_classes, activation_fn=tf.nn.sigmoid,
+                                      weights_regularizer=slim.l2_regularizer(l2_penalty))
+
+        return {"predictions": output, "labels": labels}
+
+
+class MSM0(MultiSubModel):
+    def __init__(self):
+        self.model_num = 0
+
+
+class MSM1(MultiSubModel):
+    def __init__(self):
+        self.model_num = 1
+
+
+class MSM2(MultiSubModel):
+    def __init__(self):
+        self.model_num = 2
+
+
+class MSM3(MultiSubModel):
+    def __init__(self):
+        self.model_num = 3
+
+
+class MSM4(MultiSubModel):
+    def __init__(self):
+        self.model_num = 4
+
+
+class MSM5(MultiSubModel):
+    def __init__(self):
+        self.model_num = 5
+
 
 class LogisticModel(models.BaseModel):
   """Logistic model with L2 regularization."""
