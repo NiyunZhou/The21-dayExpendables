@@ -19,6 +19,7 @@ import models
 import tensorflow as tf
 import utils
 from tensorflow import gfile
+from tensorflow import logging
 
 from tensorflow import flags
 import tensorflow.contrib.slim as slim
@@ -47,7 +48,7 @@ class MultiSubModel(models.BaseModel):
     def create_model(self, model_input, vocab_size, is_training, labels, l2_penalty=1e-8,  **unused_params):
         with gfile.Open(FLAGS.class_index_file ,"rb") as f:
             submodels = cPickle.load(f)
-        print "####Model number is ",self.model_num
+        logging.info("##############Model number is "+str(self.model_num))
         submodel_label = submodels[self.model_num]
         labels = self.parse_labels(labels, submodel_label)
 
