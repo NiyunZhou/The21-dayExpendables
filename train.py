@@ -30,6 +30,7 @@ from tensorflow import flags
 from tensorflow import gfile
 from tensorflow import logging
 from tensorflow.python.client import device_lib
+import numpy
 import utils
 
 FLAGS = flags.FLAGS
@@ -280,7 +281,7 @@ def build_graph(reader,
       with (tf.variable_scope(("tower"), reuse=True if i > 0 else None)):
         with (slim.arg_scope([slim.model_variable, slim.variable], device="/cpu:0" if num_gpus!=1 else "/gpu:0")):
           if FLAGS.multi_model:
-            print "###########Using multi model strategy"
+            logging.info("###########Using multi model strategy")
             result = model.create_model(
                   tower_inputs[i],
                   num_frames=tower_num_frames[i],
@@ -351,7 +352,7 @@ def build_graph(reader,
   tf.add_to_collection("input_batch_raw", model_input_raw)
   tf.add_to_collection("input_batch", model_input)
   tf.add_to_collection("num_frames", num_frames)
-  tf.add_to_collection("labels", tf.cast(labels_batch, tf.float32))
+  tf.add_to_collection("labels", tf.cast(tf.concat(tower_labels,0), tf.float32))
   tf.add_to_collection("train_op", train_op)
   tf.add_to_collection("is_training", is_training)
 
@@ -443,6 +444,15 @@ class Trainer(object):
 
           if self.is_master and global_step_val % 10 == 0 and self.train_dir:
             eval_start_time = time.time()
+            if FLAGS.multi_model:
+              delete_list = []
+              logging.info("##############Full negative sample will be removed in the calculation of accuracies. The GAP will be over-calcaulated")
+              for sample in xrange(len(labels_val)):
+                if numpy.sum(labels_val[sample]) == 0:
+                  delete_list.append(sample)
+              labels_val = numpy.delete(labels_val,delete_list, axis=0)
+              predictions_val = numpy.delete(predictions_val, delete_list, axis=0)
+
             hit_at_one = eval_util.calculate_hit_at_one(predictions_val, labels_val)
             perr = eval_util.calculate_precision_at_equal_recall_rate(predictions_val,
                                                                       labels_val)
