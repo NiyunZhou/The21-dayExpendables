@@ -30,7 +30,7 @@ flags.DEFINE_integer(
     "moe_num_mixtures", 2,
     "The number of mixtures (excluding the dummy 'expert') used for MoeModel.")
 flags.DEFINE_float("drop_prob", 0.5, "Drop out probability before FC")
-flags.DEFINE_integer("multi_model_classes", 1572, "output classes for each sub model")
+flags.DEFINE_integer("multi_model_classes", 1179, "output classes for each sub model")
 flags.DEFINE_string("class_index_file","./youtube-8m/6_1572_model.cPickle", "Shuffled class index file")
 
 
@@ -80,34 +80,45 @@ class MultiSubModel(models.BaseModel):
         return {"predictions": output, "labels": labels}
 
 
-class MSM0(MultiSubModel):
+class MSM4_0(MultiSubModel):
     def __init__(self):
         self.model_num = 0
 
 
-class MSM1(MultiSubModel):
+class MSM4_1(MultiSubModel):
     def __init__(self):
         self.model_num = 1
 
 
-class MSM2(MultiSubModel):
+class MSM4_2(MultiSubModel):
     def __init__(self):
         self.model_num = 2
 
 
-class MSM3(MultiSubModel):
+class MSM4_3(MultiSubModel):
     def __init__(self):
         self.model_num = 3
 
 
-class MSM4(MultiSubModel):
+class MSM4_4(MultiSubModel):
     def __init__(self):
         self.model_num = 4
 
 
-class MSM5(MultiSubModel):
+class MSM4_5(MultiSubModel):
     def __init__(self):
         self.model_num = 5
+
+
+class MSM4_6(MultiSubModel):
+    def __init__(self):
+        self.model_num = 6
+
+
+class MSM4_7(MultiSubModel):
+    def __init__(self):
+        self.model_num = 7
+
 
 
 class LogisticModel(models.BaseModel):

@@ -1,12 +1,12 @@
 import random
-import  numpy
+import numpy
 import cPickle
 from pprint import pprint
 
 
 # num of classes = 4716
 
-divide = 3
+divide = 4
 start_seed = 1337
 num_models = 2
 
@@ -26,5 +26,5 @@ for n in xrange(num_models):
 
 print numpy.shape(model)
 
-with open("./6_1572_model.cPickle","wb") as f:
+with open("./8_1572_model.cPickle","wb") as f:
     cPickle.dump(model, f)
