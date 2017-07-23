@@ -1,2 +1,3 @@
-# The21-dayExpendables
-We are the 21-day expendables of a kaggle competition.
+# Starter code analysis
+
+包含对starter code的详细理解及注释
